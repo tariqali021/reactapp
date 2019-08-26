@@ -1,10 +1,11 @@
 import React, { Component } from "react";
-import { getMovies } from "../services/fakeMovieService";
+import { getMovies, searchMovie } from "../services/fakeMovieService";
 import { getGenres } from "../services/fakeGenreService";
 import Pagination from './common/pagination';
 import {paginate} from "../utils/paginate";
 import Filters from './common/filters';
 import MoviesTable from './moviesTable';
+import { Link } from "react-router-dom";
 
 class Movies extends Component {
     state = {
@@ -52,9 +53,14 @@ class Movies extends Component {
         this.setState({ sortColumn });
     };
 
+    handleSearch = e => {
+        const text = e.currentTarget.value;
+        this.setState({ movies: searchMovie(text) });
+    }
+
     render() {
         const { length: count } = this.state.movies;
-        const { currentPage, pageSize, movies:allMovies, genres, selectedGenre, sortColumn } = this.state;
+        const { currentPage, pageSize, movies:allMovies, genres, selectedGenre, sortColumn, searchedText } = this.state;
 
         if (count === 0) return <p>There are no movies in the database.</p>;
         
@@ -69,7 +75,7 @@ class Movies extends Component {
                         items = {genres} 
                         selectedItem ={selectedGenre} 
                         onItemSelect = {this.handleGenreChange} 
-                        dataCollection = {allMovies}
+                        dataCollection = {filteredMovies}
                     />
                 </div>
                 <div class="col">
@@ -78,7 +84,8 @@ class Movies extends Component {
                             <h4>Movies List</h4> 
                         </div>
                         <div class="col-9 text-right">
-                            <p>Showing {countFilteredMovies} movies in the database.</p>
+                            <input type='search' className='form-control form-control-sm d-inline-block col-4 mr-2' name={searchedText} value={searchedText} placeholder='Search...' onChange={this.handleSearch} />
+                            <Link className = "btn btn-primary btn-sm" to="/movies/new">Add New</Link>
                         </div>
                     </div>
                     <div class="row">
@@ -91,13 +98,16 @@ class Movies extends Component {
                         /> 
                     </div>
                     <div class="row">
-                        <div class="col text-center">
+                        <div class="col-5 text-center">
                                 <Pagination 
                                     itemsCount={countFilteredMovies} 
                                     pageSize={pageSize} 
                                     currentPage={currentPage} 
                                     onPageChange={this.handlePageChange}  
                                 />
+                        </div>
+                        <div class="col-7 text-right">
+                            <p>Showing {countFilteredMovies} movies in the database.</p>
                         </div>
                     </div>
                 </div>
