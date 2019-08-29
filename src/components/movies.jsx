@@ -1,11 +1,13 @@
 import React, { Component } from "react";
-import { getMovies, searchMovie } from "../services/fakeMovieService";
-import { getGenres } from "../services/fakeGenreService";
+import { getMovies, deleteMovie, toggleLike, searchMovie, getMoviesByGenre, sortMovies } from "../services/movieService";
+import { getGenres } from "../services/genreService";
 import Pagination from './common/pagination';
 import {paginate} from "../utils/paginate";
 import Filters from './common/filters';
 import MoviesTable from './moviesTable';
 import { Link } from "react-router-dom";
+import SearchBox from '../components/common/FormElements/search';
+import { toast } from "react-toastify";
 
 class Movies extends Component {
     state = {
@@ -14,59 +16,68 @@ class Movies extends Component {
         pageSize : 4,
         currentPage : 1,
         selectedGenre : null,
-        sortColumn : { sortBy:"title", orderBy:"asc" }
+        sortColumn : { sortBy:"title", orderBy:"asc" },
+        searchQuery : ""
     };
 
-    componentDidMount(){
-        const genres = [{name:"All Genres"}, ...getGenres()];
+    async componentDidMount(){
+        const { data : allGenres } = await getGenres(); 
+        const { data : allMovies } = await getMovies(); 
+        const genres = [{name:"All Genres"}, ...allGenres];
         this.setState({
-            movies : getMovies(),
-            genres
+            movies : allMovies,
+            genres,
+            selectedGenre : {name:"All Genres"}
+
         });
     }
 
-    handleDelete = movie => {
-        const movies = this.state.movies.filter(m => m._id !== movie._id);
-        this.setState({ movies });
-        if(!paginate(movies, this.state.currentPage, this.state.pageSize).length){
-            this.setState({currentPage:this.state.currentPage -1});
+    handleDelete = async movie => {
+        const { data : response } = await deleteMovie(movie._id);
+        if(!response.error){
+            this.setState({ movies : response.data });
+            toast.error(response.message);
+            if(!paginate(response.data, this.state.currentPage, this.state.pageSize).length){
+                this.setState({currentPage:this.state.currentPage -1});
+            }
         }
     };
 
-    handleLike = movie => {
-        const movies = [...this.state.movies];
-        const index = movies.indexOf(movie);
-        movies[index] = { ...movies[index] };
-        movies[index].liked = !movies[index].liked;
-        this.setState({ movies });
+    handleLike = async movie => {
+        const { data : response } = await toggleLike(movie._id);
+        this.setState({ movies : response.data });
     };
 
     handlePageChange = page => {
         this.setState({currentPage:page});
     };
 
-    handleGenreChange = genre => {
-        this.setState({selectedGenre : genre, currentPage:1});
+    handleGenreChange = async genre => {
+        const { data : response } = await getMoviesByGenre(genre._id);
+        this.setState({selectedGenre : genre, searchQuery : "", currentPage:1, movies : response.data});
     };
 
-    handleSort = sortColumn => {
-        this.setState({ sortColumn });
+    handleSort = async sortColumn => {
+        const { data : response } = await sortMovies(sortColumn.sortBy, sortColumn.orderBy);
+        sortColumn.orderBy = sortColumn.orderBy == 'asc' ? 'desc' : 'asc';
+        this.setState({ sortColumn, movies : response.data });
     };
 
-    handleSearch = e => {
+    handleSearch = async e => {
         const text = e.currentTarget.value;
-        this.setState({ movies: searchMovie(text) });
+        const genreId = this.state.selectedGenre._id ? this.state.selectedGenre._id : '';   
+        const { data : response } = await searchMovie(genreId, text);
+        this.setState({ movies : response.data, searchQuery : text, currentPage:1 });
     }
 
     render() {
-        const { length: count } = this.state.movies;
-        const { currentPage, pageSize, movies:allMovies, genres, selectedGenre, sortColumn, searchedText } = this.state;
-
-        if (count === 0) return <p>There are no movies in the database.</p>;
-        
-        const filteredMovies = selectedGenre && selectedGenre._id ? allMovies.filter(m => m.genre._id === selectedGenre._id) : allMovies;
+        //const { length: count } = this.state.movies;
+        const { currentPage, pageSize, movies:allMovies, genres, selectedGenre, sortColumn, searchQuery } = this.state;
+        const filteredMovies = allMovies;
         const {length: countFilteredMovies} = filteredMovies; 
-        const movies = paginate(filteredMovies, currentPage, pageSize);
+        const movies = paginate(allMovies, currentPage, pageSize);
+        console.log(this.props.auth_user)
+        
         return (
             <div class="row">
                 <div class="col-3">
@@ -75,7 +86,7 @@ class Movies extends Component {
                         items = {genres} 
                         selectedItem ={selectedGenre} 
                         onItemSelect = {this.handleGenreChange} 
-                        dataCollection = {filteredMovies}
+                        dataCollection = {allMovies}
                     />
                 </div>
                 <div class="col">
@@ -84,8 +95,8 @@ class Movies extends Component {
                             <h4>Movies List</h4> 
                         </div>
                         <div class="col-9 text-right">
-                            <input type='search' className='form-control form-control-sm d-inline-block col-4 mr-2' name={searchedText} value={searchedText} placeholder='Search...' onChange={this.handleSearch} />
-                            <Link className = "btn btn-primary btn-sm" to="/movies/new">Add New</Link>
+                            <SearchBox value={searchQuery} onSearch={this.handleSearch} />
+                            { this.props.auth_user && <Link className = "btn btn-primary btn-sm" to="/movies/new">Add New</Link> }
                         </div>
                     </div>
                     <div class="row">
@@ -94,7 +105,8 @@ class Movies extends Component {
                             deleteMovie = {this.handleDelete} 
                             likeMovie = {this.handleLike} 
                             sortMovies = {this.handleSort} 
-                            sortColumn = {sortColumn}
+                            sortColumn = {sortColumn} 
+                            auth_user = { this.props.auth_user}
                         /> 
                     </div>
                     <div class="row">

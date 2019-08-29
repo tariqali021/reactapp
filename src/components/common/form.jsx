@@ -34,9 +34,7 @@ class Form extends Component {
     };
     
     handleChange = ({ currentTarget : el }) => {
-        const data = {...this.state.data};
-        console.log(data);
-        console.log(el.name, el.value);
+        const data = {...this.state.data};        
         data[el.name] = el.value;
         this.setState({ data })
     };

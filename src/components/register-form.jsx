@@ -1,18 +1,26 @@
 import React, { Component } from 'react';
 import Form from './common/form';
 import TextField from "./common/FormElements/text-field";
+import * as auth from '../services/auth';
+import { toast } from 'react-toastify';
 
 class RegisterForm extends Form {
     state = { 
         data : { name: '', email : '', password : '' },
         errors : {}
-    };
+    };  
 
-    schema = {
-        name: "required",
-        email: "required",
-        password: "required"
-    };    
+    doSubmit = async () => {
+        console.log('submitting...')
+        // save new movie
+        const  user  = { ...this.state.data };
+        const { data : result } = await auth.register(user);
+        this.props.history.replace('/login');
+        if(!result.error)
+            toast.success(result.message);
+        else
+            toast.error(result.message);
+    };
 
     render() { 
         const { name, email, password } = this.state.data;

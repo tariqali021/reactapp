@@ -1,17 +1,36 @@
 import React, { Component } from 'react';
 import TextField from "./common/FormElements/text-field";
 import Form from './common/form';
+import { toast } from 'react-toastify';
+import * as auth from '../services/auth';
+
 
 class LoginForm extends Form {
     state = { 
         data : { email : '', password : '' },
         errors : {}
-    };
+    }; 
 
-    schema = {
-        email: "required",
-        password: "required"
-    };    
+    componentDidMount() {
+        if(auth.user()){
+            this.props.history.replace('/');
+        }
+    }
+
+    doSubmit = async () => {
+        console.log('submitting...')
+        // save new movie
+        const  user  = { ...this.state.data };
+        const { data : result } = await auth.login(user); // error;
+        const  { data : token } = result;
+        if(!result.error){
+            auth.storeToken(token);
+            const {state} = this.props.location;
+            window.location = state ? state.from.pathname : '/';
+        }else{
+            toast.error(result.message);
+        }
+    };
 
     render() { 
         const { email, password } = this.state.data;

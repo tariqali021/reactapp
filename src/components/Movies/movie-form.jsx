@@ -2,8 +2,10 @@ import React, { Component } from 'react';
 import Form from "../common/form";
 import TextField from '../common/FormElements/text-field';
 import SelectField from '../common/FormElements/select';
-import { getGenres } from '../../services/fakeGenreService';
-import { saveMovie, getMovie } from '../../services/fakeMovieService';
+import { getGenres } from '../../services/genreService';
+import { saveMovie, getMovie } from '../../services/movieService';
+import { toast } from 'react-toastify';
+
 
 class MovieForm extends Form {
     state = { 
@@ -11,19 +13,16 @@ class MovieForm extends Form {
         errors : {},
         genres : []
     };
-
-    schema = {
-        title: "required",
-        numberInStock: "required",
-        dailyRentalRate : "required"
-    };    
-
-    componentDidMount(){
-        this.setState({ genres : getGenres() });
+   
+    async componentDidMount(){
+        const {data} = await getGenres();
+        this.setState({ genres : data });
         const movieId = this.props.match.params.id;
         if(movieId === 'new') return;
-
-        const movie = getMovie(movieId);
+        
+        // Edit form
+        const { data : { data : movie } } = await getMovie(movieId);
+        console.log(data);
         if(!movie) return this.props.history.replace('/not-found');
 
         this.setState({ data : this.mapToViewModel(movie) });
@@ -39,12 +38,16 @@ class MovieForm extends Form {
         }
     };
 
-    doSubmit = () => {
+    doSubmit = async () => {
         console.log('submitting...')
         // save new movie
         const  movie  = { ...this.state.data };
-        const savedMovie = saveMovie(movie);
+        const { data : result } = await saveMovie(movie);
         this.props.history.replace('/movies');
+        if(!result.error)
+            toast.success(result.message);
+        else
+            toast.error(result.message);
     };
 
     render() { 
