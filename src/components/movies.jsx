@@ -27,7 +27,7 @@ class Movies extends Component {
         this.setState({
             movies : allMovies,
             genres,
-            selectedGenre : {name:"All Genres"}
+            selectedGenre : { name:"All Genres" }
 
         });
     }
